@@ -154,10 +154,10 @@ export const RecruitingBoard: React.FC<RecruitingBoardProps> = ({ recruits, team
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-bold focus:border-emerald-500 outline-none"
           >
             <option value={0}>Any Interest</option>
-            <option value={1}>Open (>0%)</option>
-            <option value={25}>Interested (>25%)</option>
-            <option value={50}>High Interest (>50%)</option>
-            <option value={80}>Lock (>80%)</option>
+            <option value={1}>Open ({'>'}0%)</option>
+            <option value={25}>Interested ({'>'}25%)</option>
+            <option value={50}>High Interest ({'>'}50%)</option>
+            <option value={80}>Lock ({'>'}80%)</option>
           </select>
         </div>
       </div>
