@@ -740,7 +740,7 @@ const App = () => {
             {activeTab === TABS.FINANCE && <FinancialPanel team={userTeam} onUpdate={()=>{}} />}
             {activeTab === TABS.ROSTER && (
               <div className="bg-slate-800 rounded-3xl border border-slate-700 overflow-hidden">
-                <div className="p-8 border-b border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="p-8 border-b border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800/50">
                   <div>
                     <h2 className="text-2xl font-black text-white">Depth Chart</h2>
                     <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">
@@ -765,30 +765,38 @@ const App = () => {
                     ))}
                   </div>
                 </div>
-                <div className="divide-y divide-slate-700/50">
-                  {userTeam?.roster
-                    .filter(p => rosterFilter === 'ALL' || p.position === rosterFilter)
-                    .sort((a,b) => b.rating - a.rating)
-                    .map(p => (
-                    <div key={p.id} className="p-6 flex justify-between items-center hover:bg-slate-700/20 transition-colors">
-                      <div className="flex items-center gap-6">
-                        <div className="text-xl font-black text-slate-700 w-8">{p.position}</div>
-                        <div>
-                          <div className="font-black text-white text-lg">{p.name}</div>
-                          <div className="text-xs text-slate-500 font-bold uppercase tracking-widest">{p.year} • {p.hometown}</div>
+                <div className="divide-y divide-slate-700/50 max-h-[600px] overflow-y-auto">
+                  {(rosterFilter === 'ALL' ? Object.values(Position) : [rosterFilter]).map(pos => {
+                     const players = userTeam?.roster.filter(p => p.position === pos).sort((a, b) => b.rating - a.rating) || [];
+                     if (players.length === 0) return null;
+                     
+                     return (
+                        <div key={pos}>
+                           {rosterFilter === 'ALL' && (
+                               <div className="bg-slate-900/50 px-6 py-2 border-y border-slate-700 text-xs font-black text-slate-500 uppercase tracking-widest sticky top-0">
+                                   {pos}
+                               </div>
+                           )}
+                           {players.map((p, idx) => (
+                                <div key={p.id} className="p-6 flex justify-between items-center hover:bg-slate-700/20 transition-colors">
+                                  <div className="flex items-center gap-6">
+                                    <div className="w-8 text-center text-sm font-black text-slate-600">#{idx + 1}</div>
+                                    <div>
+                                      <div className="font-black text-white text-lg">{p.name}</div>
+                                      <div className="text-xs text-slate-500 font-bold uppercase tracking-widest">{p.year} • {p.hometown}</div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-8">
+                                    <div className="text-center">
+                                      <div className="text-2xl font-black text-emerald-400">{p.rating}</div>
+                                      <div className="text-[10px] font-black text-slate-600 uppercase">OVR</div>
+                                    </div>
+                                  </div>
+                                </div>
+                           ))}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-8">
-                        <div className="text-center">
-                          <div className="text-2xl font-black text-emerald-400">{p.rating}</div>
-                          <div className="text-[10px] font-black text-slate-600 uppercase">OVR</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {userTeam?.roster.filter(p => rosterFilter === 'ALL' || p.position === rosterFilter).length === 0 && (
-                      <div className="p-10 text-center text-slate-500 font-bold">No players found for this position.</div>
-                  )}
+                     );
+                  })}
                 </div>
               </div>
             )}
