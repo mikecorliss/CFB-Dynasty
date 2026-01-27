@@ -50,6 +50,7 @@ const App = () => {
   const [aiSettings, setAiSettings] = useState<AISettings>({ provider: 'ollama', ollamaUrl: 'http://localhost:11434', ollamaModel: 'llama3', ollamaApiKey: '' });
   const [aiConnectionStatus, setAiConnectionStatus] = useState<'IDLE' | 'TESTING' | 'SUCCESS' | 'ERROR' | 'OFFLINE'>('IDLE');
   const [aiErrorDetails, setAiErrorDetails] = useState<string>('');
+  const [usingProxy, setUsingProxy] = useState(false);
 
   useEffect(() => {
     const storedSettings = localStorage.getItem('cfb_dynasty_ai_settings');
@@ -73,25 +74,36 @@ const App = () => {
   const testOllamaConnection = async () => {
     setAiConnectionStatus('TESTING');
     setAiErrorDetails('');
-    try {
-      const headers: HeadersInit = {};
-      if (aiSettings.ollamaApiKey) {
-        headers['Authorization'] = `Bearer ${aiSettings.ollamaApiKey}`;
-      }
-      
-      const baseUrl = aiSettings.ollamaUrl.replace(/\/$/, '');
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); 
+    setUsingProxy(false);
+    
+    const PROXY_URL = '/api/proxy/ollama';
 
-      const res = await fetch(`${baseUrl}/api/tags`, {
-        headers: headers,
-        signal: controller.signal
-      }).catch(err => {
-        if (err.name === 'AbortError') throw new Error('Connection timed out');
-        throw err;
-      });
-      
-      clearTimeout(timeoutId);
+    const tryConnect = async (url: string) => {
+        const headers: HeadersInit = {};
+        if (aiSettings.ollamaApiKey) {
+            headers['Authorization'] = `Bearer ${aiSettings.ollamaApiKey}`;
+        }
+        const baseUrl = url.replace(/\/$/, '');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); 
+
+        try {
+            const res = await fetch(`${baseUrl}/api/tags`, {
+                headers: headers,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            return res;
+        } catch (err: any) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') throw new Error('Connection timed out');
+            throw err;
+        }
+    };
+
+    try {
+      // First try direct connection
+      const res = await tryConnect(aiSettings.ollamaUrl);
       
       if (res.ok) {
         setAiConnectionStatus('SUCCESS');
@@ -100,9 +112,29 @@ const App = () => {
         setAiErrorDetails(`Status: ${res.status} ${res.statusText}`);
       }
     } catch (e: any) {
-      if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('Connection timed out')) {
+      // If direct connection failed, check if we should try proxy
+      const isLocalhost = aiSettings.ollamaUrl.includes('localhost') || aiSettings.ollamaUrl.includes('127.0.0.1');
+      const isCorsError = e.message.includes('Failed to fetch') || e.message.includes('NetworkError');
+
+      if (isLocalhost && isCorsError) {
+         try {
+             console.log("Direct connection blocked by CORS. Attempting local proxy...");
+             const resProxy = await tryConnect(PROXY_URL);
+             if (resProxy.ok) {
+                 setAiSettings(prev => ({ ...prev, ollamaUrl: PROXY_URL }));
+                 setUsingProxy(true);
+                 setAiConnectionStatus('SUCCESS');
+                 return;
+             }
+         } catch (proxyErr) {
+             console.error("Proxy attempt failed", proxyErr);
+         }
+      }
+
+      // If we reach here, both failed
+      if (isCorsError || e.message.includes('Connection timed out')) {
         setAiConnectionStatus('OFFLINE');
-        setAiErrorDetails('CORS or Network Error. The browser blocked the request.');
+        setAiErrorDetails('Connection failed. CORS blocked request and Proxy fallback failed. Ensure Ollama is running.');
       } else {
         console.error(e);
         setAiConnectionStatus('ERROR');
@@ -588,6 +620,7 @@ const App = () => {
                        </span>
                     </div>
                     <p className={`text-xs ${aiConnectionStatus === 'OFFLINE' ? 'text-yellow-300' : 'text-red-300'} font-mono break-all`}>{aiErrorDetails}</p>
+                    {usingProxy && <p className="text-emerald-400 font-bold text-xs mt-2">✓ Connected via Local Proxy (CORS bypassed)</p>}
                     {aiConnectionStatus === 'OFFLINE' && <p className="text-[10px] text-slate-400 mt-2">The game will use simulated stats instead of AI.</p>}
                   </div>
                )}
