@@ -36,6 +36,12 @@ export const ICONS = {
   Briefcase: (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
   ),
+  Banknote: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+  ),
+  Coins: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
+  ),
   ChevronUp: (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m18 15-6-6-6 6"/></svg>
   ),
@@ -68,6 +74,12 @@ export const generateRandomPlayer = (id: string, pos?: Position, minRating = 60,
   const position = pos || positions[Math.floor(Math.random() * positions.length)];
   const rating = Math.floor(Math.random() * (maxRating - minRating + 1)) + minRating;
   
+  // Calculate Market Value based on rating and position
+  const baseValue = rating * 1000;
+  const starMultiplier = rating > 90 ? 10 : rating > 80 ? 3 : 1;
+  const posMultiplier = (position === Position.QB) ? 2.5 : (position === Position.WR || position === Position.DL) ? 1.5 : 1;
+  const marketValue = Math.floor(baseValue * starMultiplier * posMultiplier * (0.8 + Math.random() * 0.4));
+
   return {
     id,
     name: `${NAMES[Math.floor(Math.random() * NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`,
@@ -76,7 +88,8 @@ export const generateRandomPlayer = (id: string, pos?: Position, minRating = 60,
     rating,
     hometown: HOMETOWNS[Math.floor(Math.random() * HOMETOWNS.length)],
     stats: { games: 0, yards: 0, touchdowns: 0 },
-    potential: Math.floor(Math.random() * 20) + rating
+    potential: Math.floor(Math.random() * 20) + rating,
+    marketValue: marketValue
   };
 };
 
@@ -101,7 +114,15 @@ export const generateBalancedRoster = (teamId: string, prestige: number): Player
 
 const createTeam = (id: string, name: string, nickname: string, abbr: string, color: string, prestige: number, conf: Conference): Team => ({
   id, name, nickname, abbreviation: abbr, color, prestige, stars: calculateStars(prestige), conference: conf,
-  stats: { wins: 0, losses: 0, confWins: 0, confLosses: 0, pointsFor: 0, pointsAgainst: 0, rank: 0 },
+  coachHotseat: Math.floor(Math.random() * 20) + 10,
+  financials: {
+    budget: prestige * 200000,
+    nilCollective: prestige * 100000,
+    revenueShareCap: 20000000, // 20M cap
+    revenueShareAllocated: 0,
+    marketingBudget: prestige * 5000
+  },
+  stats: { wins: 0, losses: 0, confWins: 0, confLosses: 0, pointsFor: 0, pointsAgainst: 0, rank: 0, streak: 0 },
   roster: [], strategy: { offense: 'Balanced', defense: '4-3', aggression: 5, clockManagement: 'Balanced', fourthDownTendency: 'Balanced' }
 });
 

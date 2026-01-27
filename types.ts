@@ -14,7 +14,11 @@ export enum PlayerYear {
   FR = 'FR',
   SO = 'SO',
   JR = 'JR',
-  SR = 'SR'
+  SR = 'SR',
+  RS_FR = 'RS-FR',
+  RS_SO = 'RS-SO',
+  RS_JR = 'RS-JR',
+  RS_SR = 'RS-SR'
 }
 
 export type Conference = 
@@ -23,7 +27,7 @@ export type Conference =
   | 'Independent';
 
 export enum SeasonStage {
-  PRE_SEASON = 'PRE_SEASON', // New stage for schedule editing
+  PRE_SEASON = 'PRE_SEASON',
   REGULAR_SEASON = 'REGULAR_SEASON',
   CONFERENCE_CHAMPIONSHIP = 'CONFERENCE_CHAMPIONSHIP',
   POST_SEASON = 'POST_SEASON',
@@ -44,11 +48,11 @@ export interface AISettings {
 export interface Coach {
   name: string;
   almaMater: string;
-  level: number; // 1 (HS) to 5 (Legend)
-  prestige: number; // Dynamic reputation
+  level: number;
+  prestige: number;
   offense: string;
   defense: string;
-  history: string[]; // Career history
+  history: string[];
   stats: {
     wins: number;
     losses: number;
@@ -62,27 +66,44 @@ export interface Player {
   name: string;
   position: Position;
   year: PlayerYear;
-  rating: number; // 0-100
+  rating: number;
   hometown: string;
   stats: {
     games: number;
     yards: number;
     touchdowns: number;
+    interceptions?: number;
+    tackles?: number;
   };
-  potential: number; // Hidden stat for development
+  potential: number;
   leavingStatus?: 'GRADUATING' | 'NFL' | 'TRANSFER' | null;
+  isRedshirting?: boolean;
+  marketValue: number; // NIL Value
 }
 
+export type RecruitPriority = 'Pro Potential' | 'Playing Time' | 'Academics' | 'Distance' | 'Prestige' | 'Coaching' | 'Financial';
+
 export interface Recruit extends Player {
-  interest: number; // 0-100
-  offers: string[]; // List of other teams offering
+  interest: number;
+  offers: string[];
   committedTo: string | null;
-  stars: number; // 1-5
+  stars: number;
   scoutingReport?: string;
   isScouted: boolean;
   isOffered: boolean;
-  isTargeted: boolean;
+  isTargeted: boolean; // Is added to user board
   recruitType: 'HS' | 'TRANSFER';
+  priority: RecruitPriority;
+  dealBreaker?: RecruitPriority; // If this condition isn't met, interest drops to 0
+  nilOffer: number; // Amount offered by user
+}
+
+export interface TeamFinancials {
+  budget: number; // Total budget
+  nilCollective: number; // Money available for NIL deals
+  revenueShareCap: number; // Hard cap for rev sharing
+  revenueShareAllocated: number; // Currently spent
+  marketingBudget: number; // For recruiting resources
 }
 
 export interface Team {
@@ -91,9 +112,12 @@ export interface Team {
   nickname: string;
   abbreviation: string;
   color: string;
-  prestige: number; // 0-100
-  stars: number; // 1-6
+  secondaryColor?: string;
+  prestige: number;
+  stars: number;
   conference: Conference;
+  coachHotseat: number; // 0-100 score, higher means closer to being fired
+  financials: TeamFinancials;
   stats: {
     wins: number;
     losses: number;
@@ -101,13 +125,14 @@ export interface Team {
     confLosses: number;
     pointsFor: number;
     pointsAgainst: number;
-    rank: number; // 0 for unranked
+    rank: number;
+    streak: number;
   };
   roster: Player[];
   strategy: {
     offense: 'Balanced' | 'Spread' | 'Pro-Style' | 'Option' | 'Air Raid' | 'Run Heavy';
     defense: 'Balanced' | '4-3' | '3-4' | 'Blitz Heavy' | '4-2-5' | '3-3-5';
-    aggression: number; // 1-10
+    aggression: number;
     clockManagement: 'Aggressive' | 'Balanced' | 'Conservative';
     fourthDownTendency: 'Aggressive' | 'Balanced' | 'Conservative';
   };
@@ -116,7 +141,7 @@ export interface Team {
 export interface GameStats {
   homeScore: number;
   awayScore: number;
-  quarters: number[]; // Array of 4 numbers
+  quarters: number[];
   passingYards: number;
   rushingYards: number;
   turnovers: number;
@@ -145,5 +170,13 @@ export interface Matchup {
   isUserGame: boolean;
   isConferenceGame: boolean;
   isPlayoff?: boolean;
-  label?: string; // e.g. "Peach Bowl" or "SEC Championship"
+  label?: string;
+}
+
+export interface Storyline {
+  id: string;
+  title: string;
+  content: string;
+  importance: 'LOW' | 'MED' | 'HIGH';
+  tags: string[];
 }
