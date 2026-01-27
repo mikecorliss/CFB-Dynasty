@@ -43,6 +43,7 @@ export interface AISettings {
   provider: AIProvider;
   ollamaUrl: string;
   ollamaModel: string;
+  ollamaApiKey?: string;
 }
 
 export interface Coach {
