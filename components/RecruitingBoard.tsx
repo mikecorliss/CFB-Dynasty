@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Recruit, RecruitPriority, Team } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Recruit, RecruitPriority, Team, Position } from '../types';
 import { ICONS } from '../constants';
 
 interface RecruitingBoardProps {
@@ -11,14 +11,54 @@ interface RecruitingBoardProps {
   onToggleTarget: (recruitId: string) => void;
 }
 
+interface FilterState {
+  status: 'ALL' | 'TARGETS';
+  position: 'ALL' | string;
+  state: 'ALL' | string;
+  minStars: number;
+  minInterest: number;
+}
+
 export const RecruitingBoard: React.FC<RecruitingBoardProps> = ({ recruits, team, hoursAvailable, onAction, onToggleTarget }) => {
-  const [filter, setFilter] = useState<'ALL' | 'TARGETS'>('TARGETS');
+  const [filters, setFilters] = useState<FilterState>({
+    status: 'TARGETS',
+    position: 'ALL',
+    state: 'ALL',
+    minStars: 0,
+    minInterest: 0
+  });
+
   const [selectedRecruitId, setSelectedRecruitId] = useState<string | null>(null);
   const [nilOfferAmount, setNilOfferAmount] = useState(0);
 
-  const displayedRecruits = recruits
-    .filter(r => filter === 'ALL' || (filter === 'TARGETS' && r.isTargeted))
-    .sort((a, b) => (b.isTargeted ? 1 : 0) - (a.isTargeted ? 1 : 0) || b.rating - a.rating);
+  // Extract unique states for dropdown
+  const availableStates = useMemo(() => {
+    const states = new Set<string>();
+    recruits.forEach(r => {
+      const parts = r.hometown.split(',');
+      if (parts.length > 1) {
+        states.add(parts[1].trim());
+      }
+    });
+    return Array.from(states).sort();
+  }, [recruits]);
+
+  const displayedRecruits = useMemo(() => {
+    return recruits
+      .filter(r => {
+        if (filters.status === 'TARGETS' && !r.isTargeted) return false;
+        if (filters.position !== 'ALL' && r.position !== filters.position) return false;
+        if (filters.state !== 'ALL' && !r.hometown.includes(filters.state)) return false;
+        if (r.stars < filters.minStars) return false;
+        if (r.interest < filters.minInterest) return false;
+        return true;
+      })
+      .sort((a, b) => (b.isTargeted ? 1 : 0) - (a.isTargeted ? 1 : 0) || b.rating - a.rating);
+  }, [recruits, filters]);
+
+  const updateFilter = (key: keyof FilterState, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
 
   const ACTIONS = [
     { id: 'scout', label: 'Scout', cost: 10, desc: 'Reveal potential & interest' },
@@ -50,9 +90,76 @@ export const RecruitingBoard: React.FC<RecruitingBoardProps> = ({ recruits, team
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <button onClick={() => setFilter('TARGETS')} className={`px-6 py-2 rounded-lg font-bold text-sm ${filter === 'TARGETS' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>My Board</button>
-        <button onClick={() => setFilter('ALL')} className={`px-6 py-2 rounded-lg font-bold text-sm ${filter === 'ALL' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}>Search All</button>
+      {/* Filter Controls */}
+      <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Board Status</label>
+          <select 
+            value={filters.status}
+            onChange={(e) => updateFilter('status', e.target.value)}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-bold focus:border-emerald-500 outline-none"
+          >
+            <option value="TARGETS">My Targets</option>
+            <option value="ALL">All Recruits</option>
+          </select>
+        </div>
+        
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Position</label>
+          <select 
+            value={filters.position}
+            onChange={(e) => updateFilter('position', e.target.value)}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-bold focus:border-emerald-500 outline-none"
+          >
+            <option value="ALL">All Positions</option>
+            {Object.values(Position).map(pos => (
+              <option key={pos} value={pos}>{pos}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">State</label>
+          <select 
+            value={filters.state}
+            onChange={(e) => updateFilter('state', e.target.value)}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-bold focus:border-emerald-500 outline-none"
+          >
+            <option value="ALL">All States</option>
+            {availableStates.map(st => (
+              <option key={st} value={st}>{st}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Min Stars</label>
+          <select 
+            value={filters.minStars}
+            onChange={(e) => updateFilter('minStars', parseInt(e.target.value))}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-bold focus:border-emerald-500 outline-none"
+          >
+            <option value={0}>Any Rating</option>
+            <option value={3}>3 Stars +</option>
+            <option value={4}>4 Stars +</option>
+            <option value={5}>5 Stars Only</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Interest</label>
+          <select 
+            value={filters.minInterest}
+            onChange={(e) => updateFilter('minInterest', parseInt(e.target.value))}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-bold focus:border-emerald-500 outline-none"
+          >
+            <option value={0}>Any Interest</option>
+            <option value={1}>Open (>0%)</option>
+            <option value={25}>Interested (>25%)</option>
+            <option value={50}>High Interest (>50%)</option>
+            <option value={80}>Lock (>80%)</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4">

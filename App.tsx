@@ -46,6 +46,9 @@ const App = () => {
   const [recruitingHours, setRecruitingHours] = useState(500);
   const [recruits, setRecruits] = useState<Recruit[]>([]);
   
+  // Roster Filter State
+  const [rosterFilter, setRosterFilter] = useState<string>('ALL');
+  
   // AI Settings State
   const [aiSettings, setAiSettings] = useState<AISettings>({ provider: 'ollama', ollamaUrl: 'http://localhost:11434', ollamaModel: 'llama3', ollamaApiKey: '' });
   const [aiConnectionStatus, setAiConnectionStatus] = useState<'IDLE' | 'TESTING' | 'SUCCESS' | 'ERROR' | 'OFFLINE'>('IDLE');
@@ -542,12 +545,12 @@ const App = () => {
             </div>
           </div>
           {viewState === 'DYNASTY_HUB' && (
-            <nav className="hidden lg:flex gap-2">
+            <nav className="flex gap-2 overflow-x-auto pb-2 lg:pb-0 hide-scrollbar w-full lg:w-auto">
               {Object.values(TABS).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-xs font-black rounded-xl transition-all uppercase tracking-widest ${activeTab === tab ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}
+                  className={`px-4 py-2 text-xs font-black rounded-xl transition-all uppercase tracking-widest whitespace-nowrap ${activeTab === tab ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}
                 >
                   {tab}
                 </button>
@@ -737,12 +740,36 @@ const App = () => {
             {activeTab === TABS.FINANCE && <FinancialPanel team={userTeam} onUpdate={()=>{}} />}
             {activeTab === TABS.ROSTER && (
               <div className="bg-slate-800 rounded-3xl border border-slate-700 overflow-hidden">
-                <div className="p-8 border-b border-slate-700 flex justify-between items-center">
-                  <h2 className="text-2xl font-black text-white">Depth Chart</h2>
-                  <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">{userTeam?.roster.length} Active Players</span>
+                <div className="p-8 border-b border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl font-black text-white">Depth Chart</h2>
+                    <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+                       {userTeam?.roster.filter(p => rosterFilter === 'ALL' || p.position === rosterFilter).length} Active Players
+                    </span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 hide-scrollbar">
+                    <button 
+                      onClick={() => setRosterFilter('ALL')}
+                      className={`px-4 py-2 rounded-lg font-bold text-xs whitespace-nowrap transition-colors ${rosterFilter === 'ALL' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}
+                    >
+                      ALL
+                    </button>
+                    {Object.values(Position).map(pos => (
+                      <button 
+                        key={pos}
+                        onClick={() => setRosterFilter(pos)}
+                        className={`px-4 py-2 rounded-lg font-bold text-xs whitespace-nowrap transition-colors ${rosterFilter === pos ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}
+                      >
+                        {pos}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="divide-y divide-slate-700/50">
-                  {userTeam?.roster.sort((a,b) => b.rating - a.rating).map(p => (
+                  {userTeam?.roster
+                    .filter(p => rosterFilter === 'ALL' || p.position === rosterFilter)
+                    .sort((a,b) => b.rating - a.rating)
+                    .map(p => (
                     <div key={p.id} className="p-6 flex justify-between items-center hover:bg-slate-700/20 transition-colors">
                       <div className="flex items-center gap-6">
                         <div className="text-xl font-black text-slate-700 w-8">{p.position}</div>
@@ -759,6 +786,9 @@ const App = () => {
                       </div>
                     </div>
                   ))}
+                  {userTeam?.roster.filter(p => rosterFilter === 'ALL' || p.position === rosterFilter).length === 0 && (
+                      <div className="p-10 text-center text-slate-500 font-bold">No players found for this position.</div>
+                  )}
                 </div>
               </div>
             )}
