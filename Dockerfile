@@ -1,23 +1,26 @@
-FROM node:20-alpine AS base
+# Build Stage
+FROM node:20-alpine AS build
 
-# Install dependencies
-FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json* ./
-# Use npm install instead of npm ci to allow building without package-lock.json
+
+# Copy package files and install dependencies
+COPY package.json ./
 RUN npm install
 
-# Rebuild the source code
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy all files and build the application
 COPY . .
+
+# This runs 'tsc && vite build' as defined in package.json
 RUN npm run build
 
-# Production image, copy static files and run serve
-FROM node:20-alpine AS runner
-WORKDIR /app
-RUN npm install -g serve
-COPY --from=builder /app/dist ./dist
-EXPOSE 3000
-CMD ["serve", "-s", "dist", "-l", "3000"]
+# Production Stage
+FROM nginx:stable-alpine
+
+# Copy the build output from the build stage to Nginx's serving directory
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]

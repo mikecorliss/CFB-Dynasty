@@ -7,7 +7,7 @@ import { StrategyPanel } from './components/StrategyPanel';
 import { RecruitingBoard } from './components/RecruitingBoard';
 import { FinancialPanel } from './components/FinancialPanel';
 import { simulateGameWithAI, generateWeeklyStorylines } from './services/geminiService';
-import { generateSeasonSchedule, simulateMatch, getStandings, generatePlayoffs, getAPTop25, getCFPTop25, generateConferenceChampionships } from './utils/seasonUtils';
+import { generateSeasonSchedule, simulateMatch, getStandings, generatePlayoffs, getAPTop25, getCFPTop25, generateConferenceChampionships, fetchRealTeamLogos } from './utils/seasonUtils';
 
 const TABS = {
   DASHBOARD: 'Home',
@@ -61,7 +61,36 @@ const App = () => {
       setAiSettings(JSON.parse(storedSettings));
       setViewState('CREATE_COACH');
     }
-    setAppReady(true);
+    
+    // Fetch Real Logos
+    const loadLogos = async () => {
+      // Load Team Logos
+      const logos = await fetchRealTeamLogos();
+      if (logos && Object.keys(logos).length > 0) {
+        setLeague(prev => prev.map(team => {
+           const logo = logos[team.name] || 
+                        logos[team.abbreviation] || 
+                        logos[team.nickname] ||
+                        (team.name === 'App State' ? logos['Appalachian State'] : null) ||
+                        (team.name === 'Pitt' ? logos['Pittsburgh'] : null) ||
+                        (team.name === 'UConn' ? logos['UConn'] : null) ||
+                        (team.name === 'UMass' ? logos['Massachusetts'] : null) ||
+                        (team.name === 'Southern Miss' ? logos['Southern Mississippi'] : null) ||
+                        (team.name === 'ULM' ? logos['Louisiana-Monroe'] : null) ||
+                        (team.name === 'WKU' ? logos['Western Kentucky'] : null) ||
+                        (team.name === 'MTSU' ? logos['Middle Tennessee'] : null) ||
+                        (team.name === 'SHSU' ? logos['Sam Houston'] : null) ||
+                        (team.name === 'FIU' ? logos['FIU'] : null) ||
+                        (team.name === 'USF' ? logos['South Florida'] : null);
+
+           return logo ? { ...team, logo } : team;
+        }));
+      }
+
+      setAppReady(true);
+    };
+    
+    loadLogos();
   }, []);
 
   const saveAiSettings = () => {
@@ -183,8 +212,18 @@ const App = () => {
 
   const handleCreateCoach = () => {
     if (!coach.name) return;
-    const potentialTeams = league.filter(t => t.prestige < 75 || t.coachHotseat > 60);
-    setJobOffers(potentialTeams.sort((a, b) => b.coachHotseat - a.coachHotseat).slice(0, 6));
+    
+    // Find jobs at lower prestige schools or schools with hot seats
+    let potentialTeams = league.filter(t => t.prestige < 75 || t.coachHotseat > 60);
+    
+    // Fallback: If no teams meet criteria (e.g. small league), force offer from lowest prestige teams
+    if (potentialTeams.length === 0) {
+        potentialTeams = [...league].sort((a, b) => a.prestige - b.prestige).slice(0, 6);
+    } else {
+        potentialTeams = potentialTeams.sort((a, b) => b.coachHotseat - a.coachHotseat).slice(0, 6);
+    }
+    
+    setJobOffers(potentialTeams);
     setViewState('JOB_OFFERS');
   };
 
@@ -442,13 +481,21 @@ const App = () => {
               <div>
                 <div className="flex justify-center items-center gap-12 mb-10">
                   <div className="text-center group">
-                    <div className={`w-24 h-24 ${userTeam?.color} rounded-3xl flex items-center justify-center text-3xl font-black text-white shadow-2xl mb-4 group-hover:scale-105 transition-transform`}>{userTeam?.abbreviation}</div>
+                    <img 
+                      src={userTeam?.logo} 
+                      alt={userTeam?.name} 
+                      className="w-24 h-24 rounded-3xl shadow-2xl mb-4 group-hover:scale-105 transition-transform object-cover bg-slate-900" 
+                    />
                     <div className="font-black text-white text-xl">{userTeam?.nickname}</div>
                     <div className="text-xs text-slate-500">{userTeam?.stats.wins}-{userTeam?.stats.losses}</div>
                   </div>
                   <div className="text-4xl font-black text-slate-700 italic">VS</div>
                   <div className="text-center group">
-                    <div className={`w-24 h-24 ${currentOpponent.color} rounded-3xl flex items-center justify-center text-3xl font-black text-white shadow-2xl mb-4 group-hover:scale-105 transition-transform`}>{currentOpponent.abbreviation}</div>
+                    <img 
+                      src={currentOpponent.logo} 
+                      alt={currentOpponent.name} 
+                      className="w-24 h-24 rounded-3xl shadow-2xl mb-4 group-hover:scale-105 transition-transform object-cover bg-slate-900" 
+                    />
                     <div className="font-black text-white text-xl">{currentOpponent.nickname}</div>
                     <div className="text-xs text-slate-500">{currentOpponent.stats.wins}-{currentOpponent.stats.losses}</div>
                   </div>
@@ -517,7 +564,7 @@ const App = () => {
               <div key={t.id} className={`flex justify-between items-center p-2 rounded-xl ${t.id === userTeamId ? 'bg-emerald-500/10' : ''}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold text-slate-600 w-4">{i+1}</span>
-                  <div className={`w-2 h-2 rounded-full ${t.color}`}></div>
+                  <img src={t.logo} alt={t.abbreviation} className="w-6 h-6 rounded-full bg-slate-900 object-cover" />
                   <span className={`text-sm font-bold ${t.id === userTeamId ? 'text-white' : 'text-slate-300'}`}>{t.name}</span>
                 </div>
                 <span className="text-xs font-mono text-slate-500">{t.stats.wins}-{t.stats.losses}</span>
@@ -563,7 +610,7 @@ const App = () => {
                   <div className="text-[10px] font-black text-slate-500 uppercase">{userTeam.nickname}</div>
                   <div className="text-sm font-black text-white">{userTeam.stats.wins}-{userTeam.stats.losses}</div>
                </div>
-               <div className={`w-10 h-10 rounded-xl ${userTeam.color} shadow-lg border border-white/10`}></div>
+               <img src={userTeam.logo} alt={userTeam.name} className="w-10 h-10 rounded-xl shadow-lg border border-white/10 bg-slate-900 object-cover" />
             </div>
           )}
         </div>
@@ -674,29 +721,48 @@ const App = () => {
               <h1 className="text-5xl font-black text-white tracking-tighter mb-4">The Carousel</h1>
               <p className="text-slate-400">Programs looking for a new leader. Higher prestige teams expect immediate results.</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {jobOffers.map(t => (
-                <div key={t.id} className="bg-slate-800 rounded-3xl border border-slate-700 p-8 hover:border-emerald-500 transition-all group relative overflow-hidden">
-                  <div className="flex justify-between items-start mb-1">
-                    <h2 className="text-3xl font-black text-white group-hover:text-emerald-400 transition-colors">{t.name}</h2>
-                    <div className={`px-2 py-1 rounded text-[10px] font-black uppercase ${getHotseatStatus(t.coachHotseat).color}`}>
-                      {getHotseatStatus(t.coachHotseat).label}
+            
+            {jobOffers.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {jobOffers.map(t => (
+                    <div key={t.id} className="bg-slate-800 rounded-3xl border border-slate-700 p-8 hover:border-emerald-500 transition-all group relative overflow-hidden">
+                      <div className="flex justify-between items-start mb-1">
+                        <h2 className="text-3xl font-black text-white group-hover:text-emerald-400 transition-colors">{t.name}</h2>
+                        <div className={`px-2 py-1 rounded text-[10px] font-black uppercase ${getHotseatStatus(t.coachHotseat).color}`}>
+                          {getHotseatStatus(t.coachHotseat).label}
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold text-slate-500 mb-6 uppercase tracking-widest">{t.conference}</div>
+                      
+                      <div className="flex justify-center mb-8">
+                          <img src={t.logo} alt={t.name} className="w-32 h-32 rounded-3xl shadow-2xl object-cover bg-slate-900" />
+                      </div>
+
+                      <div className="space-y-2 mb-8">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">Program Prestige</span>
+                          <span className="text-white font-black">{t.prestige}</span>
+                        </div>
+                        <div className="w-full h-1 bg-slate-900 rounded-full overflow-hidden">
+                           <div className="h-full bg-emerald-500" style={{ width: `${t.prestige}%` }}></div>
+                        </div>
+                      </div>
+                      <button onClick={() => handleSelectJob(t.id)} className="w-full py-4 bg-slate-700 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all shadow-lg">SIGN CONTRACT</button>
                     </div>
-                  </div>
-                  <div className="text-sm font-bold text-slate-500 mb-6 uppercase tracking-widest">{t.conference}</div>
-                  <div className="space-y-2 mb-8">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Program Prestige</span>
-                      <span className="text-white font-black">{t.prestige}</span>
-                    </div>
-                    <div className="w-full h-1 bg-slate-900 rounded-full overflow-hidden">
-                       <div className="h-full bg-emerald-500" style={{ width: `${t.prestige}%` }}></div>
-                    </div>
-                  </div>
-                  <button onClick={() => handleSelectJob(t.id)} className="w-full py-4 bg-slate-700 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all shadow-lg">SIGN CONTRACT</button>
+                  ))}
                 </div>
-              ))}
-            </div>
+            ) : (
+                <div className="text-center py-20 bg-slate-800 rounded-3xl border border-slate-700">
+                    <h3 className="text-2xl font-bold text-white mb-2">No Openings Found</h3>
+                    <p className="text-slate-400 mb-6">It seems no programs matching your criteria are hiring right now.</p>
+                    <button 
+                        onClick={() => setViewState('CREATE_COACH')} 
+                        className="px-8 py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-all"
+                    >
+                        Return to Setup
+                    </button>
+                </div>
+            )}
           </div>
         )}
 
@@ -713,9 +779,9 @@ const App = () => {
             </p>
             <button 
               onClick={() => {
-                setViewState('JOB_OFFERS');
                 const potentialTeams = league.filter(t => t.prestige < 70 || t.coachHotseat > 65);
                 setJobOffers(potentialTeams.sort((a, b) => b.coachHotseat - a.coachHotseat).slice(0, 5));
+                setViewState('JOB_OFFERS');
               }}
               className="px-12 py-5 bg-white text-slate-950 font-black rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-2xl"
             >
@@ -738,6 +804,59 @@ const App = () => {
                />
             )}
             {activeTab === TABS.FINANCE && <FinancialPanel team={userTeam} onUpdate={()=>{}} />}
+            
+            {activeTab === TABS.STANDINGS && (
+              <div className="space-y-6 animate-fade-in">
+                 <div className="flex justify-between items-center">
+                    <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Conference Standings</h2>
+                 </div>
+                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    {Array.from(new Set(league.map(t => t.conference))).sort().map(conf => (
+                      <div key={conf} className="bg-slate-800 rounded-3xl border border-slate-700 overflow-hidden shadow-lg">
+                        <div className="bg-slate-900/50 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                              <h3 className="text-lg font-black text-white">{conf}</h3>
+                          </div>
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                            {league.filter(t => t.conference === conf).length} Teams
+                          </span>
+                        </div>
+                        {/* Table Header */}
+                        <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-900/30 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-700/50">
+                           <div className="col-span-1">#</div>
+                           <div className="col-span-6">Team</div>
+                           <div className="col-span-2 text-center">Conf</div>
+                           <div className="col-span-2 text-center">All</div>
+                           <div className="col-span-1 text-center">Stk</div>
+                        </div>
+                        {/* Rows */}
+                        <div className="divide-y divide-slate-700/30">
+                           {getStandings(league.filter(t => t.conference === conf)).map((team, idx) => (
+                             <div key={team.id} className={`grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-700/40 transition-colors ${team.id === userTeamId ? 'bg-emerald-500/10' : ''}`}>
+                                <div className="col-span-1 font-mono text-slate-500 text-xs">{idx + 1}</div>
+                                <div className="col-span-6 flex items-center gap-3">
+                                   <img src={team.logo} alt={team.abbreviation} className="w-6 h-6 rounded-md bg-slate-900 object-cover" />
+                                   <div className="leading-tight">
+                                      <div className={`text-sm font-bold ${team.id === userTeamId ? 'text-emerald-400' : 'text-slate-200'}`}>
+                                        {team.name}
+                                      </div>
+                                      {team.stats.rank > 0 && <span className="text-[9px] text-slate-500 font-bold uppercase">No. {team.stats.rank}</span>}
+                                   </div>
+                                </div>
+                                <div className="col-span-2 text-center font-mono text-slate-400 text-xs">{team.stats.confWins}-{team.stats.confLosses}</div>
+                                <div className="col-span-2 text-center font-mono text-white font-bold text-xs">{team.stats.wins}-{team.stats.losses}</div>
+                                <div className={`col-span-1 text-center text-[10px] font-black uppercase ${team.stats.streak > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                   {team.stats.streak > 0 ? `W${team.stats.streak}` : `L${Math.abs(team.stats.streak)}`}
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                      </div>
+                    ))}
+                 </div>
+              </div>
+            )}
+
             {activeTab === TABS.ROSTER && (
               <div className="bg-slate-800 rounded-3xl border border-slate-700 overflow-hidden">
                 <div className="p-8 border-b border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800/50">

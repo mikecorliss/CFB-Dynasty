@@ -12,6 +12,32 @@ const shuffle = <T>(array: T[]): T[] => {
     return array;
 };
 
+export const fetchRealTeamLogos = async (): Promise<Record<string, string>> => {
+  try {
+    const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=1000&groups=80');
+    const data = await response.json();
+    const map: Record<string, string> = {};
+    
+    if (data?.sports?.[0]?.leagues?.[0]?.teams) {
+      data.sports[0].leagues[0].teams.forEach((t: any) => {
+        const team = t.team;
+        if (team.logos?.[0]?.href) {
+          const href = team.logos[0].href;
+          map[team.displayName] = href;
+          map[team.shortDisplayName] = href;
+          map[team.name] = href;
+          map[team.abbreviation] = href;
+          map[team.name.replace(' State', ' St')] = href;
+        }
+      });
+    }
+    return map;
+  } catch (err) {
+    console.error("Error fetching logos:", err);
+    return {};
+  }
+};
+
 export const generateSeasonSchedule = (teams: Team[]): Matchup[] => {
   const schedule: Matchup[] = [];
   const TOTAL_GAMES = 12;

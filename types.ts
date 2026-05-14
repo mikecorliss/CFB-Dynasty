@@ -114,6 +114,7 @@ export interface Team {
   abbreviation: string;
   color: string;
   secondaryColor?: string;
+  logo: string;
   prestige: number;
   stars: number;
   conference: Conference;
