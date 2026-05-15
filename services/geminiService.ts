@@ -106,7 +106,7 @@ const generateFallbackGameResult = (homeTeam: Team, awayTeam: Team): GameResult 
       turnovers: Math.floor(Math.random() * 3),
       possessionTime: "30:00"
     },
-    summary: `The ${winner.name} defeated the ${loser.name} ${hScore}-${aScore} in a game decided by execution in the red zone. (Offline Simulation)`,
+    summary: `The ${winner.name} ${winner.nickname} defeated the ${loser.name} ${loser.nickname} ${Math.max(hScore, aScore)}-${Math.min(hScore, aScore)} in a game decided by execution in the red zone. (Offline Simulation)`,
     playByPlayHighlights: [
       `${winner.name} strikes first with a long touchdown drive.`,
       `${loser.name} struggles to convert on 3rd down.`,
@@ -135,7 +135,7 @@ export const simulateGameWithAI = async (
         "homeScore": number,
         "awayScore": number,
         "quarters": [q1_score, q2_score, q3_score, q4_score],
-        "summary": "4 sentence narrative summary",
+        "summary": "4 sentence narrative summary (Ensure any score mentioned is in WinnerScore-LoserScore format)",
         "playByPlayHighlights": ["highlight 1", "highlight 2", "highlight 3"],
         "stats": {
           "passingYards": number,

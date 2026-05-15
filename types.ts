@@ -44,6 +44,7 @@ export interface AISettings {
   ollamaUrl: string;
   ollamaModel: string;
   ollamaApiKey?: string;
+  difficulty: 'Freshman' | 'Varsity' | 'Heisman';
 }
 
 export interface Coach {
@@ -80,6 +81,15 @@ export interface Player {
   leavingStatus?: 'GRADUATING' | 'NFL' | 'TRANSFER' | null;
   isRedshirting?: boolean;
   marketValue: number; // NIL Value
+  depthChartOrder?: number;
+}
+
+export interface RecruitingFilterState {
+  status: 'ALL' | 'TARGETS';
+  position: 'ALL' | string;
+  state: 'ALL' | string;
+  minStars: number;
+  minInterest: number;
 }
 
 export type RecruitPriority = 'Pro Potential' | 'Playing Time' | 'Academics' | 'Distance' | 'Prestige' | 'Coaching' | 'Financial';
@@ -87,6 +97,7 @@ export type RecruitPriority = 'Pro Potential' | 'Playing Time' | 'Academics' | '
 export interface Recruit extends Player {
   interest: number;
   offers: string[];
+  teamInterests?: Record<string, number>;
   committedTo: string | null;
   stars: number;
   scoutingReport?: string;

@@ -8,16 +8,16 @@ interface StrategyPanelProps {
 
 export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate }) => {
   return (
-    <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-8">
+    <div className="bg-[#bbbbbb] dark:bg-[#111111] p-6 rounded-xl border border-slate-300 dark:border-[#2a2a2a] space-y-8">
       <div>
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
           Gameplan Strategy
         </h2>
 
         <div className="space-y-6">
           {/* Offense */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Offensive Scheme</label>
+            <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Offensive Scheme</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {['Balanced', 'Spread', 'Pro-Style', 'Option', 'Air Raid', 'Run Heavy'].map((scheme) => (
                 <button
@@ -26,7 +26,7 @@ export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate
                   className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                     strategy.offense === scheme
                       ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/50 ring-1 ring-emerald-400'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      : 'bg-slate-200 dark:bg-[#1a1a1a] text-slate-700 dark:text-slate-300 hover:bg-slate-600'
                   }`}
                 >
                   {scheme}
@@ -37,7 +37,7 @@ export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate
 
           {/* Defense */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Defensive Front</label>
+            <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Defensive Front</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {['Balanced', '4-3', '3-4', 'Blitz Heavy', '4-2-5', '3-3-5'].map((scheme) => (
                 <button
@@ -46,7 +46,7 @@ export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate
                   className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                     strategy.defense === scheme
                       ? 'bg-red-600 text-white shadow-lg shadow-red-900/50 ring-1 ring-red-400'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      : 'bg-slate-200 dark:bg-[#1a1a1a] text-slate-700 dark:text-slate-300 hover:bg-slate-600'
                   }`}
                 >
                   {scheme}
@@ -58,7 +58,7 @@ export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate
           {/* Aggression Slider */}
           <div>
             <div className="flex justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-400">Playcalling Aggression</label>
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Playcalling Aggression</label>
               <span className="text-emerald-400 font-bold">{strategy.aggression}/10</span>
             </div>
             <input
@@ -67,7 +67,7 @@ export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate
               max="10"
               value={strategy.aggression}
               onChange={(e) => onUpdate({ ...strategy, aggression: parseInt(e.target.value) })}
-              className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+              className="w-full h-2 bg-slate-200 dark:bg-[#1a1a1a] rounded-lg appearance-none cursor-pointer accent-emerald-500"
             />
             <div className="flex justify-between text-xs text-slate-500 mt-1">
               <span>Conservative</span>
@@ -77,15 +77,15 @@ export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate
         </div>
       </div>
 
-      <div className="pt-8 border-t border-slate-700">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+      <div className="pt-8 border-t border-slate-300 dark:border-[#2a2a2a]">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
           Game Management
         </h2>
 
         <div className="space-y-6">
           {/* Clock Management */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Clock Management Style</label>
+            <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Clock Management Style</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {[
                 { id: 'Aggressive', desc: 'Up-tempo, snap early' },
@@ -98,10 +98,10 @@ export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate
                   className={`px-4 py-3 rounded-lg text-left transition-all border ${
                     strategy.clockManagement === opt.id
                       ? 'bg-emerald-600/10 border-emerald-500 ring-1 ring-emerald-500'
-                      : 'bg-slate-700 border-transparent text-slate-300 hover:bg-slate-600'
+                      : 'bg-slate-200 dark:bg-[#1a1a1a] border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-600'
                   }`}
                 >
-                  <div className={`font-bold text-sm ${strategy.clockManagement === opt.id ? 'text-emerald-400' : 'text-white'}`}>{opt.id}</div>
+                  <div className={`font-bold text-sm ${strategy.clockManagement === opt.id ? 'text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{opt.id}</div>
                   <div className="text-xs text-slate-500">{opt.desc}</div>
                 </button>
               ))}
@@ -110,7 +110,7 @@ export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate
 
           {/* Fourth Down Tendencies */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Fourth Down Tendency</label>
+            <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Fourth Down Tendency</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {[
                 { id: 'Aggressive', label: 'Go For It Often', desc: 'Always trust the analytics' },
@@ -123,10 +123,10 @@ export const StrategyPanel: React.FC<StrategyPanelProps> = ({ strategy, onUpdate
                   className={`px-4 py-3 rounded-lg text-left transition-all border ${
                     strategy.fourthDownTendency === opt.id
                       ? 'bg-indigo-600/10 border-indigo-500 ring-1 ring-indigo-500'
-                      : 'bg-slate-700 border-transparent text-slate-300 hover:bg-slate-600'
+                      : 'bg-slate-200 dark:bg-[#1a1a1a] border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-600'
                   }`}
                 >
-                  <div className={`font-bold text-sm ${strategy.fourthDownTendency === opt.id ? 'text-indigo-400' : 'text-white'}`}>{opt.label}</div>
+                  <div className={`font-bold text-sm ${strategy.fourthDownTendency === opt.id ? 'text-indigo-400' : 'text-slate-900 dark:text-white'}`}>{opt.label}</div>
                   <div className="text-xs text-slate-500">{opt.desc}</div>
                 </button>
               ))}

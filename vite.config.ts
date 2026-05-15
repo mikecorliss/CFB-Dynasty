@@ -20,6 +20,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/proxy\/ollama/, ''),
         secure: false,
+      },
+      '/api/espn': {
+        target: 'https://site.api.espn.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/espn/, ''),
+        secure: false,
       }
     }
   }

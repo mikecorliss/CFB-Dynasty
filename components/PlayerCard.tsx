@@ -21,18 +21,18 @@ const getPositionColor = (pos: Position) => {
 export const PlayerCard: React.FC<PlayerCardProps> = ({ player, compact = false }) => {
   if (compact) {
     return (
-      <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors">
+      <div className="flex items-center justify-between p-3 bg-[#bbbbbb] dark:bg-[#111111] rounded-lg border border-slate-300 dark:border-[#2a2a2a] hover:border-slate-400 dark:border-[#333333] transition-colors">
         <div className="flex items-center space-x-3">
           <span className={`px-2 py-1 rounded text-xs font-bold ${getPositionColor(player.position)}`}>
             {player.position}
           </span>
           <div>
             <div className="font-semibold text-slate-100">{player.name}</div>
-            <div className="text-xs text-slate-400">{player.year} • {player.hometown}</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400">{player.year} • {player.hometown}</div>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-bold text-slate-200">{player.rating}</div>
+          <div className="text-lg font-bold text-slate-800 dark:text-slate-200">{player.rating}</div>
           <div className="text-xs text-slate-500 uppercase">OVR</div>
         </div>
       </div>
@@ -40,7 +40,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, compact = false 
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 shadow-lg relative overflow-hidden group">
+    <div className="bg-[#bbbbbb] dark:bg-[#111111] rounded-xl border border-slate-300 dark:border-[#2a2a2a] p-5 shadow-lg relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
         <span className="text-6xl font-black">{player.position}</span>
       </div>
@@ -50,24 +50,24 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, compact = false 
           <span className={`px-3 py-1 rounded-full text-sm font-bold ${getPositionColor(player.position)}`}>
             {player.position}
           </span>
-          <span className="text-2xl font-bold text-white">{player.rating}</span>
+          <span className="text-2xl font-bold text-slate-900 dark:text-white">{player.rating}</span>
         </div>
         
-        <h3 className="text-xl font-bold text-white mb-1">{player.name}</h3>
-        <p className="text-slate-400 text-sm mb-4">{player.year} • {player.hometown}</p>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{player.name}</h3>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">{player.year} • {player.hometown}</p>
         
-        <div className="grid grid-cols-3 gap-2 py-3 border-t border-slate-700">
+        <div className="grid grid-cols-3 gap-2 py-3 border-t border-slate-300 dark:border-[#2a2a2a]">
            <div className="text-center">
              <div className="text-xs text-slate-500">Gms</div>
-             <div className="font-mono text-slate-300">{player.stats.games}</div>
+             <div className="font-mono text-slate-700 dark:text-slate-300">{player.stats.games}</div>
            </div>
            <div className="text-center">
              <div className="text-xs text-slate-500">Yds</div>
-             <div className="font-mono text-slate-300">{player.stats.yards}</div>
+             <div className="font-mono text-slate-700 dark:text-slate-300">{player.stats.yards}</div>
            </div>
            <div className="text-center">
              <div className="text-xs text-slate-500">TD</div>
-             <div className="font-mono text-slate-300">{player.stats.touchdowns}</div>
+             <div className="font-mono text-slate-700 dark:text-slate-300">{player.stats.touchdowns}</div>
            </div>
         </div>
       </div>
