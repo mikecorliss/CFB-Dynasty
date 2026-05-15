@@ -1,19 +1,17 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# CFB Dynasty
 
-# Run and deploy your AI Studio app
+Welcome to CFB Dynasty!
 
-This contains everything you need to run your app locally.
+A college football dynasty management simulation.
 
+## Features
+- **Team Management:** Select a team and build a dynasty.
+- **Recruiting:** Contact, scout, and sign top high school prospects. CPU teams compete for the same players based on your relative prestige!
+- **Scheduling & Simulation:** Local simulation logic tracks scores, stats, and standings.
+- **Coaching Carousel:** Keep your job by winning games. Good teams get poached by bigger programs or fired if expectations aren't met!
+- **AI Integration:** Bring your own AI (Ollama with various models) to generate storylines and simulate granular play-by-play.
 
-## Run Locally
+## Settings
+Difficulty levels scale the challenge, while various models give personality to the simulation text. You can configure this at any point from the "Settings" tab.
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Feel free to edit this README!

@@ -352,21 +352,25 @@ const App = () => {
       setRecruitingHours(prev => prev - cost);
       setRecruits(prev => prev.map(r => {
           if (r.id === recruitId) {
-              let interestGain = 0;
+              let baseInterestGain = 0;
               let extra = {};
               switch(action) {
                   case 'scout':
-                      interestGain = 5;
+                      baseInterestGain = 5;
                       extra = { isScouted: true };
                       break;
-                  case 'contact': interestGain = 3; break;
-                  case 'soft_sell': interestGain = 10; break;
-                  case 'visit': interestGain = 25; break;
+                  case 'contact': baseInterestGain = 3; break;
+                  case 'soft_sell': baseInterestGain = 10; break;
+                  case 'visit': baseInterestGain = 25; break;
                   case 'scholarship': 
-                      interestGain = 15; 
+                      baseInterestGain = 15; 
                       extra = { isOffered: true };
                       break;
               }
+              
+              const prestigeModifier = userTeam.prestige / 50; // Prestige 100 = 2x, Prestige 50 = 1x
+              const interestGain = Math.floor(baseInterestGain * prestigeModifier);
+
               return { ...r, interest: Math.min(100, r.interest + interestGain), ...extra };
           }
           return r;
@@ -485,7 +489,9 @@ const App = () => {
         const attentionChance = r.stars * 0.15;
         tempLeague.forEach(team => {
             if (team.id !== userTeamId && Math.random() < attentionChance) {
-                newTeamInterests[team.id] = (newTeamInterests[team.id] || 0) + Math.floor(Math.random() * 8) + (team.prestige > 85 ? 5 : 0);
+                const prestigeModifier = team.prestige / 50;
+                const actionPoints = Math.floor((Math.random() * 8 + 2) * prestigeModifier);
+                newTeamInterests[team.id] = (newTeamInterests[team.id] || 0) + actionPoints;
             }
         });
         
@@ -785,19 +791,18 @@ const App = () => {
               <ICONS.Football className="text-white w-6 h-6" />
             </div>
             <div className="leading-tight">
-              <span className="block font-black text-xl tracking-tighter text-slate-900 dark:text-white uppercase">DYNASTY <span className="text-emerald-500 italic">25</span></span>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Manager</span>
+              <span className="block font-black text-xl tracking-tighter text-slate-900 dark:text-white uppercase">CFB DYNASTY</span>
             </div>
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)} 
-              className="ml-2 p-2 rounded-xl bg-slate-200 dark:bg-[#1a1a1a] text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent dark:border-[#333333]"
+              className="ml-6 p-2 rounded-xl bg-slate-200 dark:bg-[#1a1a1a] text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent dark:border-[#333333]"
               title="Toggle Theme"
             >
                {isDarkMode ? <ICONS.Sun className="w-4 h-4" /> : <ICONS.Moon className="w-4 h-4" />}
             </button>
           </div>
           {viewState === 'DYNASTY_HUB' && (
-            <nav className="flex gap-2 overflow-x-auto pb-2 lg:pb-0 hide-scrollbar w-full lg:w-auto">
+            <nav className="flex gap-2 overflow-x-auto pb-2 lg:pb-0 hide-scrollbar w-full lg:w-auto ml-8">
               {Object.values(TABS).map((tab) => (
                 <button
                   key={tab}
@@ -810,7 +815,7 @@ const App = () => {
             </nav>
           )}
           {userTeam && viewState !== 'SETUP_AI' && (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 ml-8">
                <div className="text-right hidden sm:block">
                   <div className="text-[10px] font-black text-slate-500 uppercase">{userTeam.nickname}</div>
                   <div className="text-sm font-black text-slate-900 dark:text-white">{userTeam.stats.wins}-{userTeam.stats.losses}</div>
@@ -853,6 +858,19 @@ const App = () => {
                    placeholder="llama3"
                  />
                  <p className="text-[10px] text-slate-600 mt-2 ml-2">Examples: llama3, mistral, gemma</p>
+               </div>
+
+               <div>
+                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-2">Difficulty</label>
+                 <select 
+                   value={aiSettings.difficulty} 
+                   onChange={e => setAiSettings({...aiSettings, difficulty: e.target.value as 'Freshman' | 'Varsity' | 'Heisman'})} 
+                   className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-4 text-slate-900 dark:text-white font-mono text-sm focus:border-blue-500 outline-none" 
+                 >
+                    <option value="Freshman">Freshman (Easy)</option>
+                    <option value="Varsity">Varsity (Medium)</option>
+                    <option value="Heisman">Heisman (Hard)</option>
+                 </select>
                </div>
 
                <div>
@@ -1183,6 +1201,74 @@ const App = () => {
                      );
                   })}
                 </div>
+              </div>
+            )}
+
+            {activeTab === TABS.SETTINGS && (
+              <div className="max-w-xl mx-auto bg-[#bbbbbb] dark:bg-[#111111] rounded-3xl border border-slate-300 dark:border-[#2a2a2a] p-10 shadow-3xl text-center">
+                 <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-900/20">
+                   <ICONS.Settings className="text-white w-8 h-8" />
+                 </div>
+                 <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Game Settings</h2>
+                 <p className="text-slate-600 dark:text-slate-400 mb-8 text-sm">Configure AI and difficulty.</p>
+                 
+                 <div className="space-y-6 text-left">
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-2">Ollama URL</label>
+                     <input 
+                       type="text" 
+                       value={aiSettings.ollamaUrl} 
+                       onChange={e => setAiSettings({...aiSettings, ollamaUrl: e.target.value})} 
+                       className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-4 text-slate-900 dark:text-white font-mono text-sm focus:border-blue-500 outline-none" 
+                       placeholder="http://localhost:11434"
+                     />
+                   </div>
+                   
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-2">Model Name</label>
+                     <input 
+                       type="text" 
+                       value={aiSettings.ollamaModel} 
+                       onChange={e => setAiSettings({...aiSettings, ollamaModel: e.target.value})} 
+                       className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-4 text-slate-900 dark:text-white font-mono text-sm focus:border-blue-500 outline-none" 
+                       placeholder="llama3"
+                     />
+                   </div>
+
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-2">Difficulty</label>
+                     <select 
+                       value={aiSettings.difficulty} 
+                       onChange={e => setAiSettings({...aiSettings, difficulty: e.target.value as 'Freshman' | 'Varsity' | 'Heisman'})} 
+                       className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-4 text-slate-900 dark:text-white font-mono text-sm focus:border-blue-500 outline-none" 
+                     >
+                        <option value="Freshman">Freshman (Easy)</option>
+                        <option value="Varsity">Varsity (Medium)</option>
+                        <option value="Heisman">Heisman (Hard)</option>
+                     </select>
+                   </div>
+
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-2">API Key (Optional)</label>
+                     <input 
+                       type="password" 
+                       value={aiSettings.ollamaApiKey || ''} 
+                       onChange={e => setAiSettings({...aiSettings, ollamaApiKey: e.target.value})} 
+                       className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-4 text-slate-900 dark:text-white font-mono text-sm focus:border-blue-500 outline-none" 
+                       placeholder="sk-..."
+                     />
+                   </div>
+                 </div>
+
+                 <button 
+                   onClick={() => {
+                     localStorage.setItem('cfb_dynasty_ai_settings', JSON.stringify(aiSettings));
+                     alert('Settings saved!');
+                   }}
+                   className="mt-8 w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl transition-all shadow-xl shadow-emerald-900/40 uppercase tracking-widest text-sm"
+                 >
+                   Save Settings
+                 </button>
               </div>
             )}
           </>
