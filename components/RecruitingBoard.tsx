@@ -268,7 +268,7 @@ export const RecruitingBoard: React.FC<RecruitingBoardProps> = ({ recruits, team
                       return (
                       <button
                         key={action.id}
-                        disabled={hoursAvailable < action.cost || isFinanciallyDisabled || (action.id === 'scholarship' && recruit.isOffered)}
+                        disabled={hoursAvailable < action.cost || isFinanciallyDisabled || (action.id === 'scholarship' && recruit.isOffered) || (action.id === 'scout' && recruit.isScouted) || (action.id === 'visit' && recruit.hasVisited)}
                         onClick={() => onAction(recruit.id, action.id, action.cost, { financialCost: finCost })}
                         className={`px-4 py-3 rounded-lg border text-left min-w-[140px] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${hoursAvailable >= action.cost && !isFinanciallyDisabled ? 'bg-[#bbbbbb] dark:bg-[#111111] border-slate-400 dark:border-[#333333] hover:bg-slate-200 dark:bg-[#1a1a1a] hover:border-emerald-500 text-slate-900 dark:text-white' : 'bg-slate-50 dark:bg-black border-slate-800 text-slate-600'}`}
                       >

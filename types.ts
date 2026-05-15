@@ -103,6 +103,7 @@ export interface Recruit extends Player {
   scoutingReport?: string;
   isScouted: boolean;
   isOffered: boolean;
+  hasVisited?: boolean;
   isTargeted: boolean; // Is added to user board
   recruitType: 'HS' | 'TRANSFER';
   priority: RecruitPriority;

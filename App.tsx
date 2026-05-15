@@ -66,6 +66,13 @@ const App = () => {
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  // Auth State
+  const [currentUser, setCurrentUser] = useState<{ id: string, username: string } | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+
   useEffect(() => {
     const savedMode = localStorage.getItem('cfb_dynasty_dark_mode');
     if (savedMode === 'light') {
@@ -129,6 +136,86 @@ const App = () => {
     localStorage.setItem('cfb_dynasty_ai_settings', JSON.stringify(sanitizedSettings));
     setAiSettings(sanitizedSettings);
     setViewState('CREATE_COACH');
+  };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/${authMode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: usernameInput, password: passwordInput })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (authMode === 'login') {
+          setCurrentUser({ id: data.userId, username: data.username });
+          setShowAuthModal(false);
+          setUsernameInput('');
+          setPasswordInput('');
+        } else {
+          setAuthMode('login');
+          alert('Registration successful! Please login.');
+        }
+      } else {
+        alert(data.error || 'Authenication failed');
+      }
+    } catch (err) {
+      alert('Network error during authentication');
+    }
+  };
+
+  const handleSaveGame = async () => {
+    if (!currentUser) return setShowAuthModal(true);
+    
+    const saveData = {
+      viewState, seasonStage, coach, league, userTeamId, userHotseat,
+      schedule, storylines, week,
+      recruitingHours, recruitingFilters, recruits, rosterFilter
+    };
+
+    try {
+      const res = await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id, saveData })
+      });
+      const data = await res.json();
+      if (data.success) alert('Game saved successfully!');
+      else alert('Failed to save game');
+    } catch (err) {
+      alert('Network error saving game');
+    }
+  };
+
+  const handleLoadGame = async () => {
+    if (!currentUser) return setShowAuthModal(true);
+
+    try {
+      const res = await fetch(`/api/load/${currentUser.id}`);
+      const data = await res.json();
+      if (data.success && data.saveData) {
+        const sd = data.saveData;
+        setViewState(sd.viewState);
+        setSeasonStage(sd.seasonStage);
+        setCoach(sd.coach);
+        setLeague(sd.league);
+        setUserTeamId(sd.userTeamId);
+        setUserHotseat(sd.userHotseat);
+        setSchedule(sd.schedule);
+        setStorylines(sd.storylines || []);
+        setWeek(sd.week);
+        setRecruitingHours(sd.recruitingHours);
+        setRecruitingFilters(sd.recruitingFilters);
+        setRecruits(sd.recruits);
+        setRosterFilter(sd.rosterFilter);
+        alert('Game loaded successfully!');
+      } else {
+        alert(data.error || 'No save found');
+      }
+    } catch (err) {
+      alert('Network error loading game');
+    }
   };
 
   const testOllamaConnection = async () => {
@@ -361,7 +448,10 @@ const App = () => {
                       break;
                   case 'contact': baseInterestGain = 3; break;
                   case 'soft_sell': baseInterestGain = 10; break;
-                  case 'visit': baseInterestGain = 25; break;
+                  case 'visit': 
+                      baseInterestGain = 25; 
+                      extra = { hasVisited: true };
+                      break;
                   case 'scholarship': 
                       baseInterestGain = 15; 
                       extra = { isOffered: true };
@@ -793,6 +883,20 @@ const App = () => {
             <div className="leading-tight">
               <span className="block font-black text-xl tracking-tighter text-slate-900 dark:text-white uppercase">CFB DYNASTY</span>
             </div>
+            
+            <div className="ml-4 hidden md:flex items-center gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
+               {currentUser ? (
+                 <>
+                   <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-2">Hi, {currentUser.username}</span>
+                   <button onClick={handleSaveGame} className="px-3 py-1.5 bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-bold transition-all">Save</button>
+                   <button onClick={handleLoadGame} className="px-3 py-1.5 bg-blue-600/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-bold transition-all">Load</button>
+                   <button onClick={() => setCurrentUser(null)} className="px-3 py-1.5 bg-slate-600/20 text-slate-600 dark:text-slate-400 hover:bg-slate-600 hover:text-white rounded-lg text-xs font-bold transition-all">Logout</button>
+                 </>
+               ) : (
+                 <button onClick={() => setShowAuthModal(true)} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-500 transition-all">Login / Register</button>
+               )}
+            </div>
+
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)} 
               className="ml-6 p-2 rounded-xl bg-slate-200 dark:bg-[#1a1a1a] text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent dark:border-[#333333]"
@@ -827,6 +931,52 @@ const App = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-10">
+        {showAuthModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+             <div className="bg-[#bbbbbb] dark:bg-[#111111] border border-slate-300 dark:border-[#2a2a2a] p-8 rounded-3xl max-w-sm w-full shadow-2xl relative">
+                <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-900 dark:hover:text-white">
+                  <ICONS.X className="w-6 h-6" />
+                </button>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 uppercase tracking-tighter">
+                   {authMode === 'login' ? 'Coach Login' : 'Register Coach'}
+                </h2>
+                <form onSubmit={handleAuth} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Username</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={usernameInput} 
+                      onChange={e => setUsernameInput(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-3 text-slate-900 dark:text-white font-bold text-sm focus:border-emerald-500 outline-none" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Password</label>
+                    <input 
+                      type="password" 
+                      required
+                      value={passwordInput} 
+                      onChange={e => setPasswordInput(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-3 text-slate-900 dark:text-white font-bold text-sm focus:border-emerald-500 outline-none" 
+                    />
+                  </div>
+                  <button type="submit" className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all uppercase tracking-widest mt-2 shadow-lg shadow-emerald-900/20">
+                    {authMode === 'login' ? 'Login' : 'Create Account'}
+                  </button>
+                </form>
+                <div className="mt-6 text-center">
+                  <button 
+                    onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                    className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                  >
+                    {authMode === 'login' ? "Don't have an account? Register" : "Already have an account? Login"}
+                  </button>
+                </div>
+             </div>
+          </div>
+        )}
+
         {viewState === 'SETUP_AI' && (
           <div className="max-w-xl mx-auto bg-[#bbbbbb] dark:bg-[#111111] rounded-3xl border border-slate-300 dark:border-[#2a2a2a] p-10 shadow-3xl text-center">
              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-900/20">
