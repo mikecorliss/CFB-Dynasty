@@ -62,6 +62,43 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // Proxy ESPN requests
+  app.get("/api/espn/*", async (req, res) => {
+    try {
+      const targetUrl = `https://site.api.espn.com/${req.params[0]}`;
+      const queryParams = new URLSearchParams(req.query as Record<string, string>).toString();
+      const finalUrl = queryParams ? `${targetUrl}?${queryParams}` : targetUrl;
+      
+      const espnRes = await fetch(finalUrl);
+      const data = await espnRes.json();
+      res.json(data);
+    } catch (e) {
+      console.error("ESPN Proxy Error:", e);
+      res.status(500).json({ error: "Failed to fetch ESPN data" });
+    }
+  });
+
+  // Proxy Ollama requests
+  app.post("/api/proxy/ollama/*", async (req, res) => {
+    try {
+      const targetUrl = `http://127.0.0.1:11434/${req.params[0]}`;
+      const ollamaRes = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body)
+      });
+      if (!ollamaRes.ok) {
+         res.status(ollamaRes.status).send(await ollamaRes.text());
+         return;
+      }
+      const data = await ollamaRes.json();
+      res.json(data);
+    } catch (e) {
+      console.error("Ollama Proxy Error:", e);
+      res.status(500).json({ error: "Failed to communicate with Ollama" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
