@@ -13,5 +13,3 @@ A college football dynasty management simulation.
 
 ## Settings
 Difficulty levels scale the challenge, while various models give personality to the simulation text. You can configure this at any point from the "Settings" tab.
-
-Feel free to edit this README!
