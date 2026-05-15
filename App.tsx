@@ -26,7 +26,7 @@ const PRIORITIES: RecruitPriority[] = ['Pro Potential', 'Playing Time', 'Academi
 
 const App = () => {
   const [appReady, setAppReady] = useState(false);
-  const [viewState, setViewState] = useState<'SETUP_AI' | 'CREATE_COACH' | 'JOB_OFFERS' | 'DYNASTY_HUB' | 'FIRED'>('SETUP_AI');
+  const [viewState, setViewState] = useState<'LOGIN' | 'SETUP_AI' | 'CREATE_COACH' | 'JOB_OFFERS' | 'DYNASTY_HUB' | 'FIRED'>('LOGIN');
   const [seasonStage, setSeasonStage] = useState<SeasonStage>(SeasonStage.PRE_SEASON);
   const [coach, setCoach] = useState<Coach>({
     name: '', almaMater: '', level: 1, prestige: 10, offense: 'Balanced', defense: '4-3', history: [], stats: { wins: 0, losses: 0, confChamps: 0, natChamps: 0 }
@@ -57,21 +57,114 @@ const App = () => {
   // Roster Filter State
   const [rosterFilter, setRosterFilter] = useState<string>('ALL');
   
+  // Login State
+  const [currentUser, setCurrentUser] = useState<{ id: string; username: string } | null>(null);
+
   // AI Settings State
   const [aiSettings, setAiSettings] = useState<AISettings>({ provider: 'ollama', ollamaUrl: 'http://localhost:11434', ollamaModel: 'llama3', ollamaApiKey: '', difficulty: 'Varsity' });
   const [aiConnectionStatus, setAiConnectionStatus] = useState<'IDLE' | 'TESTING' | 'SUCCESS' | 'ERROR' | 'OFFLINE'>('IDLE');
   const [aiErrorDetails, setAiErrorDetails] = useState<string>('');
   const [usingProxy, setUsingProxy] = useState(false);
 
+  const saveGameState = async () => {
+    if (!currentUser) {
+      alert("Please login first to save");
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = {
+        viewState,
+        seasonStage,
+        coach,
+        league,
+        userTeamId,
+        userHotseat,
+        jobOffers,
+        schedule,
+        storylines,
+        activeTab,
+        week,
+        recruitingHours,
+        recruits,
+        aiSettings
+      };
+      const res = await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: currentUser.username, data })
+      });
+      if (res.ok) {
+        alert('Game Saved Successfully!');
+      } else {
+        alert('Failed to save game');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error saving game');
+    }
+    setLoading(false);
+  };
+
+  const loadGameState = (data: any) => {
+    if (!data) {
+        setViewState(localStorage.getItem('cfb_dynasty_ai_settings') ? 'CREATE_COACH' : 'SETUP_AI');
+        return;
+    }
+    setViewState(data.viewState || 'SETUP_AI');
+    setSeasonStage(data.seasonStage || SeasonStage.PRE_SEASON);
+    setCoach(data.coach);
+    setLeague(data.league);
+    setUserTeamId(data.userTeamId);
+    setUserHotseat(data.userHotseat);
+    setJobOffers(data.jobOffers || []);
+    setSchedule(data.schedule || []);
+    setStorylines(data.storylines || []);
+    setActiveTab(data.activeTab || TABS.DASHBOARD);
+    setWeek(data.week || 0);
+    setRecruitingHours(data.recruitingHours || 500);
+    setRecruits(data.recruits || []);
+    if (data.aiSettings) setAiSettings(data.aiSettings);
+  };
+
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // Auth State
-  const [currentUser, setCurrentUser] = useState<{ id: string, username: string } | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
+
+  const handleLogin = async (override?: { username?: string, password?: string } | React.MouseEvent | React.KeyboardEvent) => {
+    const un = (override && !('nativeEvent' in override) && override.username) ? override.username : usernameInput;
+    const pw = (override && !('nativeEvent' in override) && override.password) ? override.password : passwordInput;
+
+    if (!un || !pw) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: un, password: pw })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setCurrentUser({ id: data.id, username: data.username });
+      localStorage.setItem('cfb_dynasty_username', data.username);
+      localStorage.setItem('cfb_dynasty_password', pw);
+      loadGameState(data.data);
+    } catch (e: any) {
+       console.error(e);
+       if (!override || ('nativeEvent' in override)) alert(e.message || "Failed to login");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const savedUsername = localStorage.getItem('cfb_dynasty_username');
+    const savedPassword = localStorage.getItem('cfb_dynasty_password');
+    if (savedUsername && savedPassword) {
+      handleLogin({ username: savedUsername, password: savedPassword });
+    }
+  }, []);
 
   useEffect(() => {
     const savedMode = localStorage.getItem('cfb_dynasty_dark_mode');
@@ -94,7 +187,6 @@ const App = () => {
     const storedSettings = localStorage.getItem('cfb_dynasty_ai_settings');
     if (storedSettings) {
       setAiSettings(JSON.parse(storedSettings));
-      setViewState('CREATE_COACH');
     }
     
     // Fetch Real Logos
@@ -136,86 +228,6 @@ const App = () => {
     localStorage.setItem('cfb_dynasty_ai_settings', JSON.stringify(sanitizedSettings));
     setAiSettings(sanitizedSettings);
     setViewState('CREATE_COACH');
-  };
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`/api/${authMode}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: usernameInput, password: passwordInput })
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (authMode === 'login') {
-          setCurrentUser({ id: data.userId, username: data.username });
-          setShowAuthModal(false);
-          setUsernameInput('');
-          setPasswordInput('');
-        } else {
-          setAuthMode('login');
-          alert('Registration successful! Please login.');
-        }
-      } else {
-        alert(data.error || 'Authenication failed');
-      }
-    } catch (err) {
-      alert('Network error during authentication');
-    }
-  };
-
-  const handleSaveGame = async () => {
-    if (!currentUser) return setShowAuthModal(true);
-    
-    const saveData = {
-      viewState, seasonStage, coach, league, userTeamId, userHotseat,
-      schedule, storylines, week,
-      recruitingHours, recruitingFilters, recruits, rosterFilter
-    };
-
-    try {
-      const res = await fetch('/api/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUser.id, saveData })
-      });
-      const data = await res.json();
-      if (data.success) alert('Game saved successfully!');
-      else alert('Failed to save game');
-    } catch (err) {
-      alert('Network error saving game');
-    }
-  };
-
-  const handleLoadGame = async () => {
-    if (!currentUser) return setShowAuthModal(true);
-
-    try {
-      const res = await fetch(`/api/load/${currentUser.id}`);
-      const data = await res.json();
-      if (data.success && data.saveData) {
-        const sd = data.saveData;
-        setViewState(sd.viewState);
-        setSeasonStage(sd.seasonStage);
-        setCoach(sd.coach);
-        setLeague(sd.league);
-        setUserTeamId(sd.userTeamId);
-        setUserHotseat(sd.userHotseat);
-        setSchedule(sd.schedule);
-        setStorylines(sd.storylines || []);
-        setWeek(sd.week);
-        setRecruitingHours(sd.recruitingHours);
-        setRecruitingFilters(sd.recruitingFilters);
-        setRecruits(sd.recruits);
-        setRosterFilter(sd.rosterFilter);
-        alert('Game loaded successfully!');
-      } else {
-        alert(data.error || 'No save found');
-      }
-    } catch (err) {
-      alert('Network error loading game');
-    }
   };
 
   const testOllamaConnection = async () => {
@@ -883,20 +895,6 @@ const App = () => {
             <div className="leading-tight">
               <span className="block font-black text-xl tracking-tighter text-slate-900 dark:text-white uppercase">CFB DYNASTY</span>
             </div>
-            
-            <div className="ml-4 hidden md:flex items-center gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
-               {currentUser ? (
-                 <>
-                   <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-2">Hi, {currentUser.username}</span>
-                   <button onClick={handleSaveGame} className="px-3 py-1.5 bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-bold transition-all">Save</button>
-                   <button onClick={handleLoadGame} className="px-3 py-1.5 bg-blue-600/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-bold transition-all">Load</button>
-                   <button onClick={() => setCurrentUser(null)} className="px-3 py-1.5 bg-slate-600/20 text-slate-600 dark:text-slate-400 hover:bg-slate-600 hover:text-white rounded-lg text-xs font-bold transition-all">Logout</button>
-                 </>
-               ) : (
-                 <button onClick={() => setShowAuthModal(true)} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-500 transition-all">Login / Register</button>
-               )}
-            </div>
-
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)} 
               className="ml-6 p-2 rounded-xl bg-slate-200 dark:bg-[#1a1a1a] text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent dark:border-[#333333]"
@@ -904,6 +902,34 @@ const App = () => {
             >
                {isDarkMode ? <ICONS.Sun className="w-4 h-4" /> : <ICONS.Moon className="w-4 h-4" />}
             </button>
+            {currentUser && viewState !== 'LOGIN' && (
+              <button 
+                onClick={saveGameState} 
+                disabled={loading}
+                className="ml-2 px-3 py-2 text-xs font-black rounded-xl bg-blue-600/20 text-blue-500 hover:bg-blue-600/40 transition-colors border border-blue-500/30 uppercase tracking-widest disabled:opacity-50"
+              >
+                {loading ? 'Saving...' : 'Save Game'}
+              </button>
+            )}
+            {currentUser && viewState !== 'LOGIN' && (
+              <span className="ml-2 text-xs font-bold text-slate-500">
+                Hi, <span className="text-emerald-500">{currentUser.username}</span>
+              </span>
+            )}
+            {currentUser && viewState !== 'LOGIN' && (
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('cfb_dynasty_username');
+                  localStorage.removeItem('cfb_dynasty_password');
+                  setCurrentUser(null);
+                  setViewState('LOGIN');
+                }} 
+                className="ml-2 p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                title="Logout"
+              >
+                Logout
+              </button>
+            )}
           </div>
           {viewState === 'DYNASTY_HUB' && (
             <nav className="flex gap-2 overflow-x-auto pb-2 lg:pb-0 hide-scrollbar w-full lg:w-auto ml-8">
@@ -931,49 +957,42 @@ const App = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-10">
-        {showAuthModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-             <div className="bg-[#bbbbbb] dark:bg-[#111111] border border-slate-300 dark:border-[#2a2a2a] p-8 rounded-3xl max-w-sm w-full shadow-2xl relative">
-                <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-900 dark:hover:text-white">
-                  <ICONS.X className="w-6 h-6" />
-                </button>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 uppercase tracking-tighter">
-                   {authMode === 'login' ? 'Coach Login' : 'Register Coach'}
-                </h2>
-                <form onSubmit={handleAuth} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Username</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={usernameInput} 
-                      onChange={e => setUsernameInput(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-3 text-slate-900 dark:text-white font-bold text-sm focus:border-emerald-500 outline-none" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Password</label>
-                    <input 
-                      type="password" 
-                      required
-                      value={passwordInput} 
-                      onChange={e => setPasswordInput(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-3 text-slate-900 dark:text-white font-bold text-sm focus:border-emerald-500 outline-none" 
-                    />
-                  </div>
-                  <button type="submit" className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all uppercase tracking-widest mt-2 shadow-lg shadow-emerald-900/20">
-                    {authMode === 'login' ? 'Login' : 'Create Account'}
-                  </button>
-                </form>
-                <div className="mt-6 text-center">
-                  <button 
-                    onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                    className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-                  >
-                    {authMode === 'login' ? "Don't have an account? Register" : "Already have an account? Login"}
-                  </button>
-                </div>
-             </div>
+        {viewState === 'LOGIN' && (
+          <div className="max-w-xl mx-auto bg-[#bbbbbb] dark:bg-[#111111] rounded-3xl border border-slate-300 dark:border-[#2a2a2a] p-10 shadow-3xl text-center">
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2">CFB Dynasty Manager</h1>
+            <p className="text-slate-600 dark:text-slate-400 mb-8 text-sm">Enter a username to continue (creates a new save if you are new).</p>
+            
+            <div className="space-y-6 text-left">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-2">Username</label>
+                <input 
+                  type="text" 
+                  value={usernameInput} 
+                  onChange={e => setUsernameInput(e.target.value)} 
+                  className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-4 text-slate-900 dark:text-white font-mono text-sm focus:border-blue-500 outline-none" 
+                  placeholder="CoachName123"
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-2">Password</label>
+                <input 
+                  type="password" 
+                  value={passwordInput} 
+                  onChange={e => setPasswordInput(e.target.value)} 
+                  className="w-full bg-slate-50 dark:bg-black border border-slate-300 dark:border-[#2a2a2a] rounded-xl p-4 text-slate-900 dark:text-white font-mono text-sm focus:border-blue-500 outline-none" 
+                  placeholder="••••••••"
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                />
+              </div>
+              <button 
+                onClick={handleLogin}
+                disabled={loading || !usernameInput || !passwordInput}
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black rounded-xl transition-all shadow-xl"
+              >
+                {loading ? 'LOADING...' : 'LOGIN'}
+              </button>
+            </div>
           </div>
         )}
 

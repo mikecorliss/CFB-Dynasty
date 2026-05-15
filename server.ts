@@ -1,132 +1,68 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import Database from "better-sqlite3";
-import bcrypt from "bcryptjs";
-import cors from "cors";
+import fs from "fs/promises";
+import { JSONFilePreset } from "lowdb/node";
 
-// Initialize SQLite Database
-const db = new Database("dynasty.db");
+const PORT = 3000;
 
-// Run schema initialization
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL
-  );
+interface AppState {
+  users: Array<{ id: string; username: string; password?: string; data: any }>;
+}
 
-  CREATE TABLE IF NOT EXISTS saves (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    save_data TEXT NOT NULL,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  );
-`);
-
-// Prepared statements
-const insertUser = db.prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)");
-const getUserByUsername = db.prepare("SELECT * FROM users WHERE username = ?");
-const upsertSave = db.prepare(`
-  INSERT INTO saves (user_id, save_data, updated_at) 
-  VALUES (?, ?, CURRENT_TIMESTAMP)
-  ON CONFLICT(user_id) DO UPDATE SET 
-    save_data = excluded.save_data,
-    updated_at = CURRENT_TIMESTAMP;
-`);
-// SQLite doesn't support ON CONFLICT without a UNIQUE constraint actually, 
-// let's alter the schema so user_id is UNIQUE in saves. Wait, fixing that...
-db.exec(`
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_saves_user_id ON saves(user_id);
-`);
-
+const defaultData: AppState = { users: [] };
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  app.use(cors());
-  app.use(express.json({ limit: "50mb" })); // App state can be large
+  // Initialize lowdb NoSQL database
+  const db = await JSONFilePreset<AppState>("db.json", defaultData);
 
-  // --- API Routes ---
-  
-  app.post("/api/register", (req, res) => {
+  // Login / Register route
+  app.post("/api/login", async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
-      return res.status(400).json({ error: "Username and password required" });
+      return res.status(400).json({ error: "Username and password are required" });
     }
 
-    try {
-      const hash = bcrypt.hashSync(password, 10);
-      insertUser.run(username, hash);
-      res.json({ success: true, message: "Registered successfully" });
-    } catch (err: any) {
-      if (err.message.includes("UNIQUE constraint failed")) {
-        res.status(400).json({ error: "Username already exists" });
-      } else {
-        res.status(500).json({ error: "Server error" });
-      }
-    }
-  });
-
-  app.post("/api/login", (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: "Username and password required" });
-    }
-
-    const user = getUserByUsername.get(username) as any;
+    let user = db.data.users.find((u) => u.username === username);
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    const match = bcrypt.compareSync(password, user.password_hash);
-    if (!match) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    // Since we don't have a complex auth setup and cookies might be tricky locally, 
-    // we'll just have the client use the user_id locally. 
-    // For a real app we'd use JWTs, but this works for local container emulation.
-    res.json({ success: true, userId: user.id, username: user.username });
-  });
-
-  app.post("/api/save", (req, res) => {
-    const { userId, saveData } = req.body;
-    if (!userId || !saveData) {
-      return res.status(400).json({ error: "userId and saveData required" });
-    }
-
-    try {
-      upsertSave.run(userId, JSON.stringify(saveData));
-      res.json({ success: true });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Failed to save" });
-    }
-  });
-
-  app.get("/api/load/:userId", (req, res) => {
-    const { userId } = req.params;
-    
-    try {
-      const loadStmt = db.prepare("SELECT save_data FROM saves WHERE user_id = ?");
-      const result = loadStmt.get(userId) as any;
-      if (result) {
-        res.json({ success: true, saveData: JSON.parse(result.save_data) });
-      } else {
-        res.status(404).json({ error: "No save found" });
+      user = { id: Date.now().toString(), username, password, data: null };
+      db.data.users.push(user);
+      await db.write();
+    } else {
+      if (user.password && user.password !== password) {
+        return res.status(401).json({ error: "Invalid password" });
       }
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Failed to load save" });
+      // If an existing user didn't have a password set, let's set it now for backwards compatibility
+      if (!user.password) {
+        user.password = password;
+        await db.write();
+      }
     }
+    res.json({ id: user.id, username: user.username, data: user.data });
   });
 
+  // Save game state
+  app.post("/api/save", async (req, res) => {
+    const { username, data } = req.body;
+    if (!username || !data) {
+      return res.status(400).json({ error: "Username and data are required" });
+    }
 
-  // --- Vite Middleware ---
+    const userIndex = db.data.users.findIndex((u) => u.username === username);
+    if (userIndex === -1) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
+    db.data.users[userIndex].data = data;
+    await db.write();
+    res.json({ success: true });
+  });
+
+  // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -134,10 +70,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
